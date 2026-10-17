@@ -31,11 +31,9 @@ class AutorizacaoController {
     return true;
   }
 
-  // Cadastro ainda é local (será trocado pela API no próximo passo)
+  // Cadastro pela API do Laravel. Lança ApiErro se der errado.
   static Future<bool> cadastrarUsuario(Usuario usuario) async {
-    final existe = await _storage.usuarioExiste(usuario.email);
-    if (existe) return false;
-    await _storage.cadastrarUsuario(usuario);
+    await ApiLogin.cadastrar(usuario.nome, usuario.email, usuario.senha);
     return true;
   }
 
