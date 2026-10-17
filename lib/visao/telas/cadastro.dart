@@ -4,6 +4,7 @@ import 'package:trailer_dm/modelo/Usuario.dart';
 import 'package:trailer_dm/controle/AutorizacaoController.dart';
 import 'package:trailer_dm/visao/util/layout.dart';
 import 'package:trailer_dm/visao/telas/login.dart';
+import 'package:trailer_dm/controle/ApiLogin.dart';
 
 class Cadastro extends StatefulWidget {
   const Cadastro({super.key});
@@ -16,7 +17,6 @@ class _CadastroState extends State<Cadastro> {
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
-  final _usuarioController = TextEditingController();
   final _senhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
 
@@ -33,17 +33,17 @@ class _CadastroState extends State<Cadastro> {
     if (!_formKey.currentState!.validate()) return;
 
     final usuario = Usuario(
-      usuario: _usuarioController.text,
+      usuario: _emailController.text,
       senha: _senhaController.text,
       nome: _nomeController.text,
       email: _emailController.text,
     );
 
-    final sucesso = await AutorizacaoController.cadastrarUsuario(usuario);
+    try {
+      await AutorizacaoController.cadastrarUsuario(usuario);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (sucesso) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Cadastro realizado! Faça login.")),
       );
@@ -51,10 +51,16 @@ class _CadastroState extends State<Cadastro> {
         context,
         MaterialPageRoute(builder: (context) => const Login()),
       );
-    } else {
+    } on ApiErro catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Esse usuário já existe")));
+      ).showSnackBar(SnackBar(content: Text(e.mensagem)));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Erro de conexão")));
     }
   }
 

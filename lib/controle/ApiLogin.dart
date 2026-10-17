@@ -56,10 +56,10 @@ class ApiLogin {
     String senha,
   ) async {
     final r = await http.post(
-      Uri.parse('$base/register'),
+      Uri.parse('$base/cadastrar'),
       headers: _headers(),
       body: jsonEncode({
-        'name': nome,
+        'nome': nome,
         'email': email,
         'password': senha,
         'password_confirmation': senha,
