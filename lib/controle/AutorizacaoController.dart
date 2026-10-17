@@ -25,7 +25,6 @@ class AutorizacaoController {
         senha: '',
         nome: user['nome'] ?? '',
         email: user['email'] ?? auth.email,
-        telefone: '',
       ),
     );
 

@@ -3,14 +3,12 @@ class Usuario {
   final String senha;
   String nome;
   String email;
-  String telefone;
 
   Usuario({
     required this.usuario,
     required this.senha,
     required this.nome,
     required this.email,
-    required this.telefone,
   });
 
   Map<String, dynamic> toMap() => {
@@ -18,7 +16,6 @@ class Usuario {
     'senha': senha,
     'nome': nome,
     'email': email,
-    'telefone': telefone,
   };
 
   factory Usuario.fromMap(Map<String, dynamic> map) => Usuario(
@@ -26,6 +23,5 @@ class Usuario {
     senha: map['senha'] ?? '',
     nome: map['nome'] ?? '',
     email: map['email'] ?? '',
-    telefone: map['telefone'] ?? '',
   );
 }

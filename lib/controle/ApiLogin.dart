@@ -49,6 +49,42 @@ class ApiLogin {
     return dados;
   }
 
+  // Devolve {user: {...}, token: "..."}
+  static Future<Map<String, dynamic>> cadastrar(
+    String nome,
+    String email,
+    String senha,
+  ) async {
+    final r = await http.post(
+      Uri.parse('$base/register'),
+      headers: _headers(),
+      body: jsonEncode({
+        'name': nome,
+        'email': email,
+        'password': senha,
+        'password_confirmation': senha,
+      }),
+    );
+
+    Map<String, dynamic> dados;
+    try {
+      dados = jsonDecode(r.body);
+    } catch (_) {
+      throw ApiErro('Erro ao cadastrar (${r.statusCode})');
+    }
+
+    if (r.statusCode != 200 && r.statusCode != 201) {
+      final erros = dados['errors'] as Map<String, dynamic>?;
+      final primeiro = erros?.values.first;
+      throw ApiErro(
+        (primeiro is List ? primeiro.first : null) ??
+            dados['message'] ??
+            'Erro ao cadastrar',
+      );
+    }
+    return dados;
+  }
+
   static Future<void> logout(String token) async {
     try {
       await http.post(Uri.parse('$base/logout'), headers: _headers(token));

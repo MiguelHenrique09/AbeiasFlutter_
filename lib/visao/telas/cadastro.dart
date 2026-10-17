@@ -16,7 +16,6 @@ class _CadastroState extends State<Cadastro> {
   final _formKey = GlobalKey<FormState>();
   final _nomeController = TextEditingController();
   final _emailController = TextEditingController();
-  final _telefoneController = TextEditingController();
   final _usuarioController = TextEditingController();
   final _senhaController = TextEditingController();
   final _confirmarSenhaController = TextEditingController();
@@ -25,7 +24,6 @@ class _CadastroState extends State<Cadastro> {
   void dispose() {
     _nomeController.dispose();
     _emailController.dispose();
-    _telefoneController.dispose();
     _senhaController.dispose();
     _confirmarSenhaController.dispose();
     super.dispose();
@@ -39,7 +37,6 @@ class _CadastroState extends State<Cadastro> {
       senha: _senhaController.text,
       nome: _nomeController.text,
       email: _emailController.text,
-      telefone: _telefoneController.text,
     );
 
     final sucesso = await AutorizacaoController.cadastrarUsuario(usuario);
@@ -92,16 +89,6 @@ class _CadastroState extends State<Cadastro> {
               decoration: const InputDecoration(labelText: "Nome"),
               validator: (value) =>
                   (value == null || value.isEmpty) ? 'Informe o nome' : null,
-            ),
-            SizedBox(height: 15.h),
-
-            TextFormField(
-              controller: _telefoneController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: "Telefone"),
-              validator: (value) => (value == null || value.isEmpty)
-                  ? 'Informe o telefone'
-                  : null,
             ),
             SizedBox(height: 15.h),
 
