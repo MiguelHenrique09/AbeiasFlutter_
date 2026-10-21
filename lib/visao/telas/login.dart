@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:trailer_dm/modelo/Autorizacao.dart';
-import 'package:trailer_dm/controle/ApiLogin.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:trailer_dm/controle/AutorizacaoController.dart';
 import 'package:trailer_dm/visao/util/layout.dart';
 import 'package:trailer_dm/visao/telas/principal.dart';
-import 'package:trailer_dm/visao/telas/cadastro.dart';
+
+const String baseUrl = 'https://abeias.wasmer.app';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -15,144 +14,82 @@ class Login extends StatefulWidget {
 }
 
 class _LoginState extends State<Login> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _senhaController = TextEditingController();
-  bool _carregando = false;
+  late final WebViewController _controller;
+  bool _carregando = true;
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    _senhaController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0xFF0E1240))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {
+            if (mounted) setState(() => _carregando = true);
+          },
+          onNavigationRequest: (request) {
+            final uri = Uri.parse(request.url);
+            if (uri.path == '/app/token-ok') {
+              _finalizar(uri.queryParameters);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+          onPageFinished: (url) {
+            if (mounted) setState(() => _carregando = false);
+            final path = Uri.parse(url).path;
+            const ficar = [
+              '/pages/usuarioLogin',
+              '/pages/usuarioCadastro',
+              '/app/token',
+              '/app/token-ok',
+            ];
+            if (!ficar.contains(path)) {
+              _controller.loadRequest(Uri.parse('$baseUrl/app/token'));
+            }
+          },
+        ),
+      );
+    _abrirLogin();
   }
 
-  void _mensagem(String texto) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
+  Future<void> _abrirLogin() async {
+    final ua = await _controller.getUserAgent();
+    await _controller.setUserAgent('$ua AbeiasApp');
+    await WebViewCookieManager().clearCookies();
+    await _controller.loadRequest(Uri.parse('$baseUrl/pages/usuarioLogin'));
   }
 
-  Future<void> _entrar() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _finalizar(Map<String, String> dados) async {
+    final token = dados['token'];
+    if (token == null) return;
 
-    setState(() => _carregando = true);
-
-    final auth = Autorizacao(
-      email: _emailController.text.trim(),
-      senha: _senhaController.text,
-      tokenAutorizacao: '',
+    await AutorizacaoController.salvarSessaoWeb(
+      token: token,
+      nome: dados['nome'] ?? '',
+      email: dados['email'] ?? '',
     );
 
-    try {
-      await AutorizacaoController.verificaAutorizacaoOnline(auth);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const Principal()),
-      );
-    } on ApiErro catch (e) {
-      if (mounted) _mensagem(e.mensagem);
-    } catch (_) {
-      if (mounted) _mensagem("Não foi possível conectar ao servidor");
-    } finally {
-      if (mounted) setState(() => _carregando = false);
-    }
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const Principal()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    ScreenUtil.init(context, designSize: const Size(360, 690));
-    return Layout(currentIndex: 3, body: _conteudo());
-  }
-
-  Widget _conteudo() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(20.w),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            SizedBox(height: 20.h),
-
-            Text(
-              "Abeias Burguer",
-              style: TextStyle(
-                fontSize: 26.sp,
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-              ),
+    return Layout(
+      currentIndex: 3,
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_carregando)
+            const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFEA116)),
             ),
-
-            SizedBox(height: 8.h),
-
-            Text(
-              "Faça já seu login",
-              style: TextStyle(fontSize: 14.sp, color: Colors.grey),
-            ),
-
-            SizedBox(height: 35.h),
-
-            TextFormField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                hintText: "Email",
-                prefixIcon: Icon(Icons.email),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Informe o email';
-                return null;
-              },
-            ),
-
-            SizedBox(height: 20.h),
-
-            TextFormField(
-              controller: _senhaController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                hintText: "Senha",
-                prefixIcon: Icon(Icons.lock),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'Informe a senha';
-                return null;
-              },
-            ),
-
-            SizedBox(height: 35.h),
-
-            SizedBox(
-              width: double.infinity,
-              height: 50.h,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                onPressed: _carregando ? null : _entrar,
-                child: _carregando
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text("Entrar", style: TextStyle(fontSize: 16.sp)),
-              ),
-            ),
-
-            SizedBox(height: 15.h),
-
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Cadastro()),
-                );
-              },
-              child: Text(
-                "Não tem conta? Cadastre-se",
-                style: TextStyle(fontSize: 13.sp, color: Colors.orange),
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }

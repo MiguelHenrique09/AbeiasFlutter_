@@ -6,35 +6,18 @@ import 'package:trailer_dm/controle/LocalStorageService.dart';
 class AutorizacaoController {
   static final LocalStorageService _storage = LocalStorageService();
 
-  // Login pela API do Laravel. Lança ApiErro se der errado.
-  static Future<bool> verificaAutorizacaoOnline(Autorizacao auth) async {
-    final dados = await ApiLogin.login(auth.email, auth.senha);
-    final user = dados['user'];
-
+  // Login feito pela WebView: grava a sessão (token + dados do usuário).
+  static Future<void> salvarSessaoWeb({
+    required String token,
+    required String nome,
+    required String email,
+  }) async {
     await _storage.salvarAutorizacao(
-      Autorizacao(
-        email: user['email'] ?? auth.email,
-        senha: '',
-        tokenAutorizacao: dados['token'],
-      ),
+      Autorizacao(email: email, senha: '', tokenAutorizacao: token),
     );
-
     await _storage.salvarUsuarioLogado(
-      Usuario(
-        usuario: user['email'] ?? auth.email,
-        senha: '',
-        nome: user['nome'] ?? '',
-        email: user['email'] ?? auth.email,
-      ),
+      Usuario(usuario: email, senha: '', nome: nome, email: email),
     );
-
-    return true;
-  }
-
-  // Cadastro pela API do Laravel. Lança ApiErro se der errado.
-  static Future<bool> cadastrarUsuario(Usuario usuario) async {
-    await ApiLogin.cadastrar(usuario.nome, usuario.email, usuario.senha);
-    return true;
   }
 
   static Future<void> desgravaAutorizacao() async {

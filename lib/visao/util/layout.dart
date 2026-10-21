@@ -66,6 +66,9 @@ class Layout extends StatelessWidget {
 
   BottomNavigationBar _bottomNavigationBar(BuildContext context) {
     return BottomNavigationBar(
+      backgroundColor: const Color(0xFF0E1240),
+      selectedItemColor: const Color(0xFFFEA116),
+      unselectedItemColor: Colors.white54,
       type: BottomNavigationBarType.fixed,
       currentIndex: currentIndex,
       onTap: (index) => _navegarPara(context, index),
