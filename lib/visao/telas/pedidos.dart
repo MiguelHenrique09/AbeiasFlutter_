@@ -13,6 +13,7 @@ class Pedidos extends StatefulWidget {
 
 class _PedidosState extends State<Pedidos> {
   final LocalStorageService _storage = LocalStorageService();
+
   List<dynamic> _pedidos = [];
   String _statusSelecionado = 'Todos';
 
@@ -28,14 +29,10 @@ class _PedidosState extends State<Pedidos> {
 
   Future<void> _carregarPedidos() async {
     final auth = await _storage.carregarAutorizacao();
-
     if (!mounted) return;
 
     if (auth == null) {
-      setState(() {
-        _naoLogado = true;
-        _carregando = false;
-      });
+      _semLogin();
       return;
     }
 
@@ -51,28 +48,30 @@ class _PedidosState extends State<Pedidos> {
     } on ApiErro catch (e) {
       if (e.status == 401) {
         await AutorizacaoController.desgravaAutorizacao();
-        if (!mounted) return;
-        setState(() {
-          _naoLogado = true;
-          _carregando = false;
-        });
+        _semLogin();
       } else {
         _tratarErro(e.mensagem);
       }
     } catch (_) {
-      _tratarErro("Não foi possível conectar ao servidor");
+      _tratarErro('Não foi possível conectar ao servidor');
     }
+  }
+
+  void _semLogin() {
+    if (!mounted) return;
+    setState(() {
+      _naoLogado = true;
+      _carregando = false;
+    });
   }
 
   void _tratarErro(String mensagem) {
     if (!mounted) return;
-    if (_pedidos.isEmpty) {
-      setState(() {
-        _erro = mensagem;
-        _carregando = false;
-      });
-    } else {
-      setState(() => _carregando = false);
+    setState(() {
+      if (_pedidos.isEmpty) _erro = mensagem;
+      _carregando = false;
+    });
+    if (_pedidos.isNotEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(mensagem)));
@@ -80,22 +79,17 @@ class _PedidosState extends State<Pedidos> {
   }
 
   String _resumo(Map pedido) {
-    final produtos = pedido["produtos"] as List;
+    final produtos = pedido['produtos'] as List;
     return produtos
-        .map((p) => "${p["nome_produto"]} (${p["pivot"]["quantidade"]})")
-        .join(", ");
+        .map((p) => '${p['nome_produto']} (${p['pivot']['quantidade']})')
+        .join(', ');
   }
 
   String _data(Map pedido) {
-    final d = DateTime.tryParse('${pedido["data_hora_pedido"]}')?.toLocal();
+    final d = DateTime.tryParse('${pedido['data_hora_pedido']}')?.toLocal();
     if (d == null) return '';
     String dois(int n) => n.toString().padLeft(2, '0');
-    return "${dois(d.day)}/${dois(d.month)}/${d.year} ${dois(d.hour)}:${dois(d.minute)}";
-  }
-
-  String _endereco(Map pedido) {
-    final e = pedido["endereco"];
-    return e == null ? '' : '$e';
+    return '${dois(d.day)}/${dois(d.month)}/${d.year} ${dois(d.hour)}:${dois(d.minute)}';
   }
 
   void _mostrarFiltros() {
@@ -103,26 +97,24 @@ class _PedidosState extends State<Pedidos> {
 
     showModalBottomSheet(
       context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final opcao in opcoes)
-                ListTile(
-                  title: Text(opcao),
-                  trailing: _statusSelecionado == opcao
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () {
-                    setState(() => _statusSelecionado = opcao);
-                    Navigator.pop(context);
-                  },
-                ),
-            ],
-          ),
-        );
-      },
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final opcao in opcoes)
+              ListTile(
+                title: Text(opcao),
+                trailing: _statusSelecionado == opcao
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () {
+                  setState(() => _statusSelecionado = opcao);
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -138,12 +130,12 @@ class _PedidosState extends State<Pedidos> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              "Faça login",
+              'Faça login',
               style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
             Text(
-              "Você precisa estar logado para visualizar seus pedidos.",
+              'Você precisa estar logado para visualizar seus pedidos.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, color: Colors.black54),
             ),
@@ -173,7 +165,7 @@ class _PedidosState extends State<Pedidos> {
                   });
                   _carregarPedidos();
                 },
-                child: const Text("Tentar de novo"),
+                child: const Text('Tentar de novo'),
               ),
             ],
           ),
@@ -181,43 +173,18 @@ class _PedidosState extends State<Pedidos> {
       );
     }
 
+    // Aplica o filtro de status
     final pedidos = _pedidos
         .where(
           (p) =>
               _statusSelecionado == 'Todos' ||
-              p["statusPedido"] == _statusSelecionado,
+              p['statusPedido'] == _statusSelecionado,
         )
         .toList();
 
     return Column(
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          color: Colors.orange,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _statusSelecionado == 'Todos'
-                    ? "Pedidos"
-                    : "Pedidos: $_statusSelecionado",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              InkWell(
-                onTap: _mostrarFiltros,
-                child: const Icon(
-                  Icons.format_list_bulleted,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-
+        _cabecalho(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _carregarPedidos,
@@ -229,8 +196,8 @@ class _PedidosState extends State<Pedidos> {
                       Center(
                         child: Text(
                           _pedidos.isEmpty
-                              ? "Você ainda não possui pedidos."
-                              : "Nenhum pedido com esse status.",
+                              ? 'Você ainda não possui pedidos.'
+                              : 'Nenhum pedido com esse status.',
                           style: const TextStyle(
                             fontSize: 16,
                             color: Colors.black54,
@@ -242,45 +209,63 @@ class _PedidosState extends State<Pedidos> {
                 : ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: pedidos.length,
-                    itemBuilder: (context, i) {
-                      final pedido = pedidos[i];
-                      final double total = double.parse(
-                        '${pedido["valor_total"]}',
-                      );
-                      final String data = _data(pedido);
-                      final String endereco = _endereco(pedido);
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        child: ListTile(
-                          title: Text("Pedido ${pedido["idPedido"]}"),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (data.isNotEmpty) Text("Data: $data"),
-                              Text("Status: ${pedido["statusPedido"]}"),
-                              Text("Itens: ${_resumo(pedido)}"),
-                              if (endereco.isNotEmpty)
-                                Text("Endereço: $endereco"),
-                            ],
-                          ),
-                          trailing: Text(
-                            "R\$ ${total.toStringAsFixed(2)}",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                    itemBuilder: (context, i) => _cartao(pedidos[i]),
                   ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _cabecalho() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      color: Colors.orange,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            _statusSelecionado == 'Todos'
+                ? 'Pedidos'
+                : 'Pedidos: $_statusSelecionado',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          InkWell(
+            onTap: _mostrarFiltros,
+            child: const Icon(Icons.format_list_bulleted, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cartao(Map pedido) {
+    final total = double.parse('${pedido['valor_total']}');
+    final data = _data(pedido);
+    final endereco = '${pedido['endereco'] ?? ''}';
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: ListTile(
+        title: Text('Pedido ${pedido['idPedido']}'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (data.isNotEmpty) Text('Data: $data'),
+            Text('Status: ${pedido['statusPedido']}'),
+            Text('Itens: ${_resumo(pedido)}'),
+            if (endereco.isNotEmpty) Text('Endereço: $endereco'),
+          ],
+        ),
+        trailing: Text(
+          'R\$ ${total.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 15, color: Colors.black),
+        ),
+      ),
     );
   }
 }

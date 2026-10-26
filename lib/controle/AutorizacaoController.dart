@@ -1,12 +1,11 @@
 import 'package:trailer_dm/modelo/Autorizacao.dart';
 import 'package:trailer_dm/modelo/Usuario.dart';
-import 'package:trailer_dm/controle/ApiLogin.dart';
+import 'package:trailer_dm/controle/ApiPedidos.dart';
 import 'package:trailer_dm/controle/LocalStorageService.dart';
 
 class AutorizacaoController {
   static final LocalStorageService _storage = LocalStorageService();
 
-  // Login feito pela WebView: grava a sessão (token + dados do usuário).
   static Future<void> salvarSessaoWeb({
     required String token,
     required String nome,
@@ -23,7 +22,7 @@ class AutorizacaoController {
   static Future<void> desgravaAutorizacao() async {
     final auth = await _storage.carregarAutorizacao();
     if (auth != null) {
-      await ApiLogin.logout(auth.tokenAutorizacao);
+      await ApiPedido.logout(auth.tokenAutorizacao);
     }
     await _storage.desgravarAutorizacao();
   }

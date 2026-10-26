@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+// Erro da API: mensagem para o usuário + status HTTP (ex.: 401)
 class ApiErro implements Exception {
   final String mensagem;
   final int? status;
@@ -14,10 +15,16 @@ class ApiPedido {
   static const String base = 'https://abeias.wasmer.app/api';
 
   static Map<String, String> _headers([String? token]) => {
-    'Accept': 'application/json',
+    'Accept': 'application/json', // faz o Laravel responder em JSON
     'Content-Type': 'application/json',
     if (token != null) 'Authorization': 'Bearer $token',
   };
+
+  static void _checar401(http.Response r) {
+    if (r.statusCode == 401) {
+      throw ApiErro('Sessão expirada. Faça login novamente.', 401);
+    }
+  }
 
   static Future<List<dynamic>> produtos() async {
     final r = await http.get(Uri.parse('$base/produtos'), headers: _headers());
@@ -27,36 +34,19 @@ class ApiPedido {
     return jsonDecode(r.body);
   }
 
-  // Devolve {user: {...}, token: "..."}
-  static Future<Map<String, dynamic>> login(String email, String senha) async {
-    final r = await http.post(
-      Uri.parse('$base/login'),
-      headers: _headers(),
-      body: jsonEncode({'email': email, 'password': senha}),
+  static Future<List<dynamic>> pedidos(String token) async {
+    final r = await http.get(
+      Uri.parse('$base/pedidos'),
+      headers: _headers(token),
     );
 
-    Map<String, dynamic> dados;
-    try {
-      dados = jsonDecode(r.body);
-    } catch (_) {
-      throw ApiErro('Erro ao entrar (${r.statusCode})');
-    }
-
+    _checar401(r);
     if (r.statusCode != 200) {
-      throw ApiErro(
-        dados['errors']?['email']?[0] ?? dados['message'] ?? 'Erro ao entrar',
-      );
+      throw ApiErro('Erro ao carregar pedidos (${r.statusCode})', r.statusCode);
     }
-    return dados;
+    return jsonDecode(r.body);
   }
 
-  static Future<void> logout(String token) async {
-    try {
-      await http.post(Uri.parse('$base/logout'), headers: _headers(token));
-    } catch (_) {}
-  }
-
-  // Envia o pedido. itens: [{idProduto, quantidade}]. O preço é calculado no servidor.
   static Future<void> criarPedido(
     String token,
     String endereco,
@@ -75,10 +65,6 @@ class ApiPedido {
 
     if (r.statusCode == 201) return;
 
-    if (r.statusCode == 401) {
-      throw ApiErro('Sessão expirada. Faça login novamente.', 401);
-    }
-
     String mensagem = 'Erro ao enviar pedido (${r.statusCode})';
     try {
       final dados = jsonDecode(r.body);
@@ -93,19 +79,9 @@ class ApiPedido {
     throw ApiErro(mensagem, r.statusCode);
   }
 
-  // Pedidos de quem está logado
-  static Future<List<dynamic>> pedidos(String token) async {
-    final r = await http.get(
-      Uri.parse('$base/pedidos'),
-      headers: _headers(token),
-    );
-
-    if (r.statusCode == 401) {
-      throw ApiErro('Sessão expirada. Faça login novamente.', 401);
-    }
-    if (r.statusCode != 200) {
-      throw ApiErro('Erro ao carregar pedidos (${r.statusCode})', r.statusCode);
-    }
-    return jsonDecode(r.body);
+  static Future<void> logout(String token) async {
+    try {
+      await http.post(Uri.parse('$base/logout'), headers: _headers(token));
+    } catch (_) {}
   }
 }

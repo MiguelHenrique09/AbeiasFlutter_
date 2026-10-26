@@ -101,7 +101,6 @@ class _CardapioState extends State<_Cardapio> {
     );
   }
 
-  // texto = o que aparece na barra | valor = o que vem em tipo_produto
   Widget _filtro(String texto, String valor) {
     final bool selecionado = _tipoSelecionado == valor;
 
